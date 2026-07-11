@@ -12,8 +12,9 @@ Une liste organisée de documentation officielle, normes, schémas, outils et re
 - [Documentation officielle](#documentation-officielle)
 - [Schémas XSD](#schémas-xsd)
 - [Normes et spécifications de signature électronique](#normes-et-spécifications-de-signature-électronique)
+- [⚠️ Mises à jour critiques et pièges fréquents](#️-mises-à-jour-critiques-et-pièges-fréquents)
 - [Autorité de certification](#autorité-de-certification)
-- [Bibliothèques](#bibliothèques)
+- [Bibliothèques et outils](#bibliothèques-et-outils)
 - [Ce que ce dépôt n'est pas](#ce-que-ce-dépôt-nest-pas)
 - [Contribuer](#contribuer)
 - [Licence](#licence)
@@ -55,6 +56,34 @@ La signature des factures TEIF s'appuie sur les normes ETSI de signature électr
 | [RFC 5280](https://www.rfc-editor.org/rfc/rfc5280) | Profil de certificat X.509 et de liste de révocation (CRL) |
 | [RFC 2560 / RFC 6960](https://www.rfc-editor.org/rfc/rfc6960) | OCSP — vérification en ligne du statut de révocation d'un certificat |
 
+## ⚠️ Mises à jour critiques et pièges fréquents
+
+### Politique de signature — en vigueur depuis le 07/07/2026
+
+La [Spécification technique Signature Fournisseur V3.0](https://www.tradenet.com.tn/upload/ElFatoora/Specifications_Techniques_Signature_Fournisseur_V3.0.pdf) impose des règles strictement contrôlées lors de la validation de conformité des factures transmises en production :
+
+- **Politique de signature obligatoire** : le bloc `<xades:SigPolicyId>` doit référencer l'OID `urn:2.16.788.1.2.1.3` avec l'attribut `Qualifier="OIDAsURN"` (Politique de Signature Électronique de Tunisie TradeNet).
+- **Transformations XPath obligatoires** avant le calcul de la signature, en plus de la canonicalisation C14N exclusive : exclusion explicite des blocs `<ds:Signature>` et `<RefTtnVal>` du périmètre signé.
+
+```xml
+<ds:Transform Algorithm="http://www.w3.org/TR/1999/REC-xpath-19991116">
+  <ds:XPath>not(ancestor-or-self::ds:Signature)</ds:XPath>
+</ds:Transform>
+<ds:Transform Algorithm="http://www.w3.org/TR/1999/REC-xpath-19991116">
+  <ds:XPath>not(ancestor-or-self::RefTtnVal)</ds:XPath>
+</ds:Transform>
+```
+
+⚠️ **Une facture signée sans ces éléments est rejetée** lors du contrôle de conformité en production. Le calendrier d'application stricte (07/07/2026) a été confirmé par une communication officielle de Tunisie TradeNet aux prestataires homologués — cette date n'apparaît pas dans le PDF public lui-même, seules les règles techniques y figurent.
+
+### e-Houwiya (Mobile ID) comme méthode de signature
+
+La spécification V3.0 confirme que tous les certificats acceptés par l'ANCE sont reconnus par El Fatoora : **ID-Trust**, **Cachet Entreprise**, **DigiGo** et **e-Houwiya (Mobile ID)**.
+
+### Outil de vérification recommandé par TTN elle-même
+
+TTN recommande dans sa propre documentation l'usage de l'[ETSI Signature Conformance Checker](https://signatures-conformance-checker.etsi.org/) (inscription gratuite requise) pour valider la conformité structurelle d'une signature XAdES avant envoi. Précision utile de l'outil lui-même : il vérifie la **structure** de la signature par rapport aux spécifications ETSI, pas la validité cryptographique ni la chaîne de certificats.
+
 ## Autorité de certification
 
 **TunTrust** est l'unique autorité de certification électronique habilitée à délivrer des certificats qualifiés en Tunisie (rôle couvrant également ce qui relève de l'ANCE — Agence Nationale de Certification Électronique).
@@ -66,12 +95,13 @@ La signature des factures TEIF s'appuie sur les normes ETSI de signature électr
 - [Annuaire des certificats (LDAP)](https://www.tuntrust.tn/LdapSearch/)
 - [Révocation d'un certificat](https://www.tuntrust.tn/fr/content/revocation-certificat)
 
-## Bibliothèques
+## Bibliothèques et outils
 
-| Bibliothèque | Langage | Description |
+| Ressource | Type | Description |
 |---|---|---|
-| [esig/dss](https://github.com/esig/dss) | Java | **Digital Signature Service** — bibliothèque open source de la Commission Européenne pour la création/validation de signatures avancées (XAdES, CAdES, PAdES, ASiC), conforme ETSI. Référence pour toute implémentation XAdES sérieuse. |
-| [xml-crypto](https://github.com/node-saml/xml-crypto) | Node.js | Bibliothèque de signature et vérification XMLDSig, avec support de la canonicalisation C14N Exclusive. |
+| [esig/dss](https://github.com/esig/dss) | Bibliothèque Java | **Digital Signature Service** — bibliothèque open source de la Commission Européenne pour la création/validation de signatures avancées (XAdES, CAdES, PAdES, ASiC), conforme ETSI. **Confirmé par TTN elle-même** comme base de son implémentation de signature (Spécification technique V3.0, section "Avant-propos") — pas seulement une recommandation externe. |
+| [xml-crypto](https://github.com/node-saml/xml-crypto) | Bibliothèque Node.js | Signature et vérification XMLDSig, avec support de la canonicalisation C14N Exclusive. |
+| [ETSI Signature Conformance Checker](https://signatures-conformance-checker.etsi.org/) | Outil en ligne | Vérification de la conformité structurelle d'une signature XAdES/CAdES/PAdES — recommandé par TTN elle-même (inscription gratuite requise). Ne valide pas la cryptographie ni la chaîne de certificats. |
 
 *Section volontairement courte au lancement — contributions bienvenues pour l'étoffer (.NET, Python, Go...).*
 
